@@ -150,9 +150,9 @@ pub struct StreamVerdict {
 pub struct Map {
     pub name: String,
     pub kind: u32,
-    fd: RawFd,
-    config: bpf_map_def,
-    section_data: bool,
+    pub fd: RawFd,
+    pub config: bpf_map_def,
+    pub section_data: bool,
 }
 
 pub struct HashMap<'a, K: Clone, V: Clone> {
