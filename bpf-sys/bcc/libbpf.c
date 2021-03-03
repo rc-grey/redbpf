@@ -1037,10 +1037,6 @@ static int bpf_attach_probe(int progfd, enum bpf_probe_attach_type attach_type,
         }
         snprintf(fname, sizeof(fname), "-:kprobes/%s_0", ev_name);
         if (write(kfd, fname, strlen(fname)) < 0) {
-          if (errno == ENOENT)
-            fprintf(stderr, "cannot detach kprobe, probe entry may not exist\n");
-          else
-            fprintf(stderr, "cannot detach kprobe, %s\n", strerror(errno));
           close(kfd);
           goto error;
         }
