@@ -272,7 +272,7 @@ impl Program {
         }
     }
 
-    fn data_mut(&mut self) -> &mut ProgramData {
+    pub fn data_mut(&mut self) -> &mut ProgramData {
         use Program::*;
 
         match self {
