@@ -258,7 +258,7 @@ impl Program {
         }
     }
 
-    fn data(&self) -> &ProgramData {
+    pub fn data(&self) -> &ProgramData {
         use Program::*;
 
         match self {
