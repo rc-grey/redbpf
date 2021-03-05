@@ -108,7 +108,7 @@ pub enum Program {
 struct ProgramData {
     pub name: String,
     code: Vec<bpf_insn>,
-    fd: Option<RawFd>,
+    pub fd: Option<RawFd>,
 }
 
 /// Type to work with `kprobes` or `kretprobes`.
