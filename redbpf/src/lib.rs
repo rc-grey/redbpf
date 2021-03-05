@@ -105,7 +105,7 @@ pub enum Program {
     StreamVerdict(StreamVerdict),
 }
 
-struct ProgramData {
+pub struct ProgramData {
     pub name: String,
     code: Vec<bpf_insn>,
     pub fd: Option<RawFd>,
