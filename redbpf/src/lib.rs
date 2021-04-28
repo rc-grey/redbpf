@@ -1023,7 +1023,7 @@ impl<K: Clone, V: Clone> Iterator for MapIter<'_, '_, K, V> {
                     bpf_sys::bpf_get_first_key(
                         self.map.base.fd,
                         &mut key as *mut _ as *mut _,
-                        self.map.base.config.key_size.into(),
+                        self.map.base.config.key_size as usize,
                     )
                 } < 0
                 {
