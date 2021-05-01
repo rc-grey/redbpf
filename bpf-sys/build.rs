@@ -70,7 +70,6 @@ fn main() {
         .include("bcc")
         .include("libelf")
         .include(".");
-
     if target.contains("musl") {
         let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
         let kernel_headers = match target_arch.as_str() {
