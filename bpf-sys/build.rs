@@ -9,10 +9,19 @@
 use std::env;
 use std::path::PathBuf;
 
-const KERNEL_HEADERS: [&str; 6] = [
+const KERNEL_HEADERS_X86: [&str; 6] = [
     "arch/x86/include/generated/uapi",
     "arch/x86/include/uapi",
     "arch/x86/include/",
+    "include/generated/uapi",
+    "include/uapi",
+    "include",
+];
+
+const KERNEL_HEADERS_AARCH: [&str; 6] = [
+    "arch/arm64/include/generated/uapi",
+    "arch/arm64/include/uapi",
+    "arch/arm64/include/",
     "include/generated/uapi",
     "include/uapi",
     "include",
@@ -62,8 +71,13 @@ fn main() {
         .include("libelf")
         .include(".");
     if target.contains("musl") {
+        let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+        let kernel_headers = match target_arch.as_str() {
+            "aarch64" => &KERNEL_HEADERS_AARCH,
+            _ => &KERNEL_HEADERS_X86,
+        };
         for include in
-            headers::prefix_kernel_headers(&KERNEL_HEADERS).expect("couldn't find kernel headers")
+            headers::prefix_kernel_headers(kernel_headers).expect("couldn't find kernel headers")
         {
             libbpf.include(include);
         }
