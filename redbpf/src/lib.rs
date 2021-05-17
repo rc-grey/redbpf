@@ -165,6 +165,8 @@ pub struct StackTrace<'a> {
     base: &'a Map,
 }
 
+/// `BPF_MAP_TYPE_ARRAY`, a simple array type that supports reading
+/// and writing by index.
 pub struct ArrayMap<'a> {
     base: &'a Map,
 }
@@ -818,6 +820,15 @@ impl RelocationInfo {
 }
 
 impl ArrayMap<'_> {
+    /// Create a new ArrayMap from an existing Map. Will return an error if the given
+    /// map type is not `BPF_MAP_TYPE_ARRAY`.
+    ///
+    /// # Example
+    /// ```no_run
+    /// use redbpf::ArrayMap;
+    /// let ar_map = ArrayMap::new(map)
+    ///     .expect("Map given was incorrect type");
+    /// ```
     pub fn new(map: &Map) -> Result<ArrayMap<'_>> {
         if map.kind != bpf_sys::bpf_map_type_BPF_MAP_TYPE_ARRAY {
             return Err(Error::Map)
@@ -826,6 +837,18 @@ impl ArrayMap<'_> {
         Ok(ArrayMap { base: map })
     }
 
+    /// Read a value from the array at the given index.
+    ///
+    /// Read a value from the array at the given index, the result is returned as a Vec of
+    /// bytes.
+    ///
+    /// # Example
+    /// ```no_run
+    /// use redbpf::ArrayMap;
+    /// let ar_map = ArrayMap::new(map).unwrap();
+    /// let value = ar_map.read(10).expect("Could not read from array");
+    /// println!("value: {:?}", value);
+    /// ```
     pub fn read(&self, mut idx: u32) -> Result<Vec<u8>> {
         let buf = vec![0 as u8; self.base.config.value_size as usize];
 
@@ -843,7 +866,20 @@ impl ArrayMap<'_> {
         Ok(buf)
     }
 
-
+    /// Write a value to the array at the given index.
+    ///
+    /// Write a value to the array at the given index, the size of the slice given must match
+    /// the expected size of the value based on the configuration of the map.
+    ///
+    /// # Example
+    /// ```no_run
+    /// use redbpf::ArrayMap;
+    /// let ar_map = ArrayMap::new(map).unwrap();
+    /// match ar_map.write(10, &[0xDE, 0xAD, 0xBE, 0xEF]) {
+    ///     Ok(()) => println!("Wrote 0xDEADBEEF to array."),
+    ///     Err(e) => println!("Couldn't write value: {:?}", e)
+    /// };
+    /// ```
     pub fn write(&self, mut idx: u32, val: &[u8]) -> Result<()> {
         if val.len() != self.base.config.value_size as usize {
             return Err(Error::Map);
@@ -868,8 +904,6 @@ impl Map {
         let config: bpf_map_def = *zero::read(code);
         Map::with_map_def(name, config)
     }
-
-
 
     fn with_section_data(name: &str, data: &[u8], flags: u32) -> Result<Map> {
         let mut map = Map::with_map_def(
