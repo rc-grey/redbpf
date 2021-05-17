@@ -831,7 +831,7 @@ impl ArrayMap<'_> {
     /// ```
     pub fn new(map: &Map) -> Result<ArrayMap<'_>> {
         if map.kind != bpf_sys::bpf_map_type_BPF_MAP_TYPE_ARRAY {
-            return Err(Error::Map)
+            return Err(Error::Map);
         }
 
         Ok(ArrayMap { base: map })
