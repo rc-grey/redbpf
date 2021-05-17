@@ -165,6 +165,10 @@ pub struct StackTrace<'a> {
     base: &'a Map,
 }
 
+pub struct ArrayMap<'a> {
+    base: &'a Map,
+}
+
 /// SockMap structure for storing file descriptors of TCP sockets by userspace
 /// program.
 ///
@@ -813,23 +817,21 @@ impl RelocationInfo {
     }
 }
 
-impl Map {
-    pub fn load(name: &str, code: &[u8]) -> Result<Map> {
-        let config: bpf_map_def = *zero::read(code);
-        Map::with_map_def(name, config)
+impl ArrayMap<'_> {
+    pub fn new(map: &Map) -> Result<ArrayMap<'_>> {
+        if map.kind != bpf_sys::bpf_map_type_BPF_MAP_TYPE_ARRAY {
+            return Err(Error::Map)
+        }
+
+        Ok(ArrayMap { base: map })
     }
 
     pub fn read(&self, mut idx: u32) -> Result<Vec<u8>> {
-        if self.kind != bpf_sys::bpf_map_type_BPF_MAP_TYPE_ARRAY {
-            // Other map types are not currently supported
-            return Err(Error::Map);
-        }
-
-        let buf = vec![0 as u8; self.config.value_size as usize];
+        let buf = vec![0 as u8; self.base.config.value_size as usize];
 
         unsafe {
             let ret = bpf_sys::bpf_lookup_elem(
-                self.fd,
+                self.base.fd,
                 &mut idx as *mut _ as *mut _,
                 buf.as_ptr() as *mut u8 as *mut _,
             );
@@ -841,17 +843,14 @@ impl Map {
         Ok(buf)
     }
 
+
     pub fn write(&self, mut idx: u32, val: &[u8]) -> Result<()> {
-        if self.kind != bpf_sys::bpf_map_type_BPF_MAP_TYPE_ARRAY {
-            // Other map types are not currently supported
-            return Err(Error::Map);
-        }
-        if val.len() != self.config.value_size as usize {
+        if val.len() != self.base.config.value_size as usize {
             return Err(Error::Map);
         }
         unsafe {
             let ret = bpf_sys::bpf_update_elem(
-                self.fd,
+                self.base.fd,
                 &mut idx as *mut _ as *mut _,
                 val.as_ptr() as *mut u8 as *mut _,
                 0,
@@ -862,6 +861,15 @@ impl Map {
         }
         Ok(())
     }
+}
+
+impl Map {
+    pub fn load(name: &str, code: &[u8]) -> Result<Map> {
+        let config: bpf_map_def = *zero::read(code);
+        Map::with_map_def(name, config)
+    }
+
+
 
     fn with_section_data(name: &str, data: &[u8], flags: u32) -> Result<Map> {
         let mut map = Map::with_map_def(
