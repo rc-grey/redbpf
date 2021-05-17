@@ -819,6 +819,50 @@ impl Map {
         Map::with_map_def(name, config)
     }
 
+    pub fn read(&self, mut idx: u32) -> Result<Vec<u8>> {
+        if self.kind != bpf_sys::bpf_map_type_BPF_MAP_TYPE_ARRAY {
+            // Other map types are not currently supported
+            return Err(Error::Map);
+        }
+
+        let buf = vec![0 as u8; self.config.value_size as usize];
+
+        unsafe {
+            let ret = bpf_sys::bpf_lookup_elem(
+                self.fd,
+                &mut idx as *mut _ as *mut _,
+                buf.as_ptr() as *mut u8 as *mut _,
+            );
+            if ret < 0 {
+                return Err(Error::BPF)
+            }
+        }
+
+        Ok(buf)
+    }
+
+    pub fn write(&self, mut idx: u32, val: &[u8]) -> Result<()> {
+        if self.kind != bpf_sys::bpf_map_type_BPF_MAP_TYPE_ARRAY {
+            // Other map types are not currently supported
+            return Err(Error::Map);
+        }
+        if val.len() != self.config.value_size as usize {
+            return Err(Error::Map);
+        }
+        unsafe {
+            let ret = bpf_sys::bpf_update_elem(
+                self.fd,
+                &mut idx as *mut _ as *mut _,
+                val.as_ptr() as *mut u8 as *mut _,
+                0,
+            );
+            if ret < 0 {
+                return Err(Error::BPF);
+            }
+        }
+        Ok(())
+    }
+
     fn with_section_data(name: &str, data: &[u8], flags: u32) -> Result<Map> {
         let mut map = Map::with_map_def(
             name,
