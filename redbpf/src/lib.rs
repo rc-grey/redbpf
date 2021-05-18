@@ -859,7 +859,7 @@ impl<'base, T: Clone> ArrayMap<'base, T> {
             let ret = bpf_sys::bpf_lookup_elem(
                 self.base.fd,
                 &mut idx as *mut _ as *mut _,
-                &mut buf as *mut u8 as *mut _,
+                &mut buf as *mut _ as *mut _,
             );
             if ret < 0 {
                 return Err(Error::BPF)
@@ -888,7 +888,7 @@ impl<'base, T: Clone> ArrayMap<'base, T> {
             let ret = bpf_sys::bpf_update_elem(
                 self.base.fd,
                 &mut idx as *mut _ as *mut _,
-                &mut val as *mut u8 as *mut _,
+                &mut val as *mut _ as *mut _,
                 0,
             );
             if ret < 0 {
