@@ -820,17 +820,17 @@ impl RelocationInfo {
     }
 }
 
-impl ArrayMap<'_, T> {
+impl<'base, T: Clone> ArrayMap<'base, T> {
     /// Create a new ArrayMap from an existing Map. Will return an error if the given
     /// map type is not `BPF_MAP_TYPE_ARRAY`.
     ///
     /// # Example
     /// ```no_run
     /// use redbpf::ArrayMap;
-    /// let ar_map = ArrayMap::<i64>::new(map)
+    /// let ar_map = ArrayMap::new(map)
     ///     .expect("Map given was incorrect type");
     /// ```
-    pub fn new(map: &Map) -> Result<ArrayMap<'_, T>> {
+    pub fn new(map: &Map) -> Result<ArrayMap<T>> {
         if map.kind != bpf_sys::bpf_map_type_BPF_MAP_TYPE_ARRAY {
             return Err(Error::Map);
         }
