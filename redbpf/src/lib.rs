@@ -834,7 +834,7 @@ impl<'base, T: Clone> ArrayMap<'base, T> {
         if map.kind != bpf_sys::bpf_map_type_BPF_MAP_TYPE_ARRAY {
             return Err(Error::Map);
         }
-        if mem::size_of::<T>() != map.config.key_size as usize {
+        if mem::size_of::<T>() != map.config.value_size as usize {
             return Err(Error::Map);
         }
         Ok(ArrayMap { base: map, _t: PhantomData })
@@ -884,9 +884,6 @@ impl<'base, T: Clone> ArrayMap<'base, T> {
     /// };
     /// ```
     pub fn write(&self, mut idx: u32, mut val: T) -> Result<()> {
-        if val.len() != self.base.config.value_size as usize {
-            return Err(Error::Map);
-        }
         unsafe {
             let ret = bpf_sys::bpf_update_elem(
                 self.base.fd,
