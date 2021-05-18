@@ -827,7 +827,7 @@ impl<'base, T: Clone> ArrayMap<'base, T> {
     /// # Example
     /// ```no_run
     /// use redbpf::ArrayMap;
-    /// let ar_map = ArrayMap::new(map)
+    /// let ar_map = ArrayMap::<u32>::new(map)
     ///     .expect("Map given was incorrect type");
     /// ```
     pub fn new(map: &Map) -> Result<ArrayMap<T>> {
@@ -848,7 +848,7 @@ impl<'base, T: Clone> ArrayMap<'base, T> {
     /// # Example
     /// ```no_run
     /// use redbpf::ArrayMap;
-    /// let ar_map = ArrayMap::new(map).unwrap();
+    /// let ar_map = ArrayMap::<u32>::new(map).unwrap();
     /// let value = ar_map.read(10).expect("Could not read from array");
     /// println!("value: {:?}", value);
     /// ```
@@ -877,8 +877,8 @@ impl<'base, T: Clone> ArrayMap<'base, T> {
     /// # Example
     /// ```no_run
     /// use redbpf::ArrayMap;
-    /// let ar_map = ArrayMap::new(map).unwrap();
-    /// match ar_map.write(10, &[0xDE, 0xAD, 0xBE, 0xEF]) {
+    /// let ar_map = ArrayMap::<u32>::new(map).unwrap();
+    /// match ar_map.write(10, 0xDEADBEEF) {
     ///     Ok(()) => println!("Wrote 0xDEADBEEF to array."),
     ///     Err(e) => println!("Couldn't write value: {:?}", e)
     /// };
