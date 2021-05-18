@@ -167,8 +167,9 @@ pub struct StackTrace<'a> {
 
 /// `BPF_MAP_TYPE_ARRAY`, a simple array type that supports reading
 /// and writing by index.
-pub struct ArrayMap<'a> {
+pub struct ArrayMap<'a, T: Clone> {
     base: &'a Map,
+    _t: PhantomData<T>,
 }
 
 /// SockMap structure for storing file descriptors of TCP sockets by userspace
@@ -819,22 +820,24 @@ impl RelocationInfo {
     }
 }
 
-impl ArrayMap<'_> {
+impl ArrayMap<'_, T> {
     /// Create a new ArrayMap from an existing Map. Will return an error if the given
     /// map type is not `BPF_MAP_TYPE_ARRAY`.
     ///
     /// # Example
     /// ```no_run
     /// use redbpf::ArrayMap;
-    /// let ar_map = ArrayMap::new(map)
+    /// let ar_map = ArrayMap::<i64>::new(map)
     ///     .expect("Map given was incorrect type");
     /// ```
-    pub fn new(map: &Map) -> Result<ArrayMap<'_>> {
+    pub fn new(map: &Map) -> Result<ArrayMap<'_, T>> {
         if map.kind != bpf_sys::bpf_map_type_BPF_MAP_TYPE_ARRAY {
             return Err(Error::Map);
         }
-
-        Ok(ArrayMap { base: map })
+        if mem::size_of::<T>() != map.config.key_size as usize {
+            return Err(Error::Map);
+        }
+        Ok(ArrayMap { base: map, _t: PhantomData })
     }
 
     /// Read a value from the array at the given index.
@@ -849,21 +852,21 @@ impl ArrayMap<'_> {
     /// let value = ar_map.read(10).expect("Could not read from array");
     /// println!("value: {:?}", value);
     /// ```
-    pub fn read(&self, mut idx: u32) -> Result<Vec<u8>> {
-        let buf = vec![0 as u8; self.base.config.value_size as usize];
+    pub fn read(&self, mut idx: u32) -> Result<T> {
+        let mut buf = MaybeUninit::zeroed();
 
         unsafe {
             let ret = bpf_sys::bpf_lookup_elem(
                 self.base.fd,
                 &mut idx as *mut _ as *mut _,
-                buf.as_ptr() as *mut u8 as *mut _,
+                &mut buf as *mut u8 as *mut _,
             );
             if ret < 0 {
                 return Err(Error::BPF)
             }
         }
 
-        Ok(buf)
+        Ok(unsafe {buf.assume_init()})
     }
 
     /// Write a value to the array at the given index.
@@ -880,7 +883,7 @@ impl ArrayMap<'_> {
     ///     Err(e) => println!("Couldn't write value: {:?}", e)
     /// };
     /// ```
-    pub fn write(&self, mut idx: u32, val: &[u8]) -> Result<()> {
+    pub fn write(&self, mut idx: u32, mut val: T) -> Result<()> {
         if val.len() != self.base.config.value_size as usize {
             return Err(Error::Map);
         }
@@ -888,7 +891,7 @@ impl ArrayMap<'_> {
             let ret = bpf_sys::bpf_update_elem(
                 self.base.fd,
                 &mut idx as *mut _ as *mut _,
-                val.as_ptr() as *mut u8 as *mut _,
+                &mut val as *mut u8 as *mut _,
                 0,
             );
             if ret < 0 {
