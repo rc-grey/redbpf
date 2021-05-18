@@ -167,6 +167,9 @@ pub struct StackTrace<'a> {
 
 /// `BPF_MAP_TYPE_ARRAY`, a simple array type that supports reading
 /// and writing by index.
+///
+/// Note: The `mem::size_of::<T>()` **must** match the `.value_size`
+/// set for the array in the eBPF object.
 pub struct ArrayMap<'a, T: Clone> {
     base: &'a Map,
     _t: PhantomData<T>,
