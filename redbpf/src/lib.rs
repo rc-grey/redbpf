@@ -165,6 +165,16 @@ pub struct StackTrace<'a> {
     base: &'a Map,
 }
 
+/// `BPF_MAP_TYPE_ARRAY`, a simple array type that supports reading
+/// and writing by index.
+///
+/// Note: The `mem::size_of::<T>()` **must** match the `.value_size`
+/// set for the array in the eBPF object.
+pub struct ArrayMap<'a, T: Clone> {
+    base: &'a Map,
+    _t: PhantomData<T>,
+}
+
 /// SockMap structure for storing file descriptors of TCP sockets by userspace
 /// program.
 ///
@@ -809,6 +819,85 @@ impl RelocationInfo {
             code[insn_idx].set_src_reg(bpf_sys::BPF_PSEUDO_MAP_FD as u8);
         }
         code[insn_idx].imm = map.fd;
+        Ok(())
+    }
+}
+
+impl<'base, T: Clone> ArrayMap<'base, T> {
+    /// Create a new ArrayMap from an existing Map. Will return an error if the given
+    /// map type is not `BPF_MAP_TYPE_ARRAY`.
+    ///
+    /// # Example
+    /// ```no_run
+    /// use redbpf::ArrayMap;
+    /// let ar_map = ArrayMap::<u32>::new(map)
+    ///     .expect("Map given was incorrect type");
+    /// ```
+    pub fn new(map: &Map) -> Result<ArrayMap<T>> {
+        if map.kind != bpf_sys::bpf_map_type_BPF_MAP_TYPE_ARRAY {
+            return Err(Error::Map);
+        }
+        if mem::size_of::<T>() != map.config.value_size as usize {
+            return Err(Error::Map);
+        }
+        Ok(ArrayMap { base: map, _t: PhantomData })
+    }
+
+    /// Read a value from the array at the given index.
+    ///
+    /// Read a value from the array at the given index, the result is returned as a Vec of
+    /// bytes.
+    ///
+    /// # Example
+    /// ```no_run
+    /// use redbpf::ArrayMap;
+    /// let ar_map = ArrayMap::<u32>::new(map).unwrap();
+    /// let value = ar_map.read(10).expect("Could not read from array");
+    /// println!("value: {:?}", value);
+    /// ```
+    pub fn read(&self, mut idx: u32) -> Result<T> {
+        let mut buf = MaybeUninit::zeroed();
+
+        unsafe {
+            let ret = bpf_sys::bpf_lookup_elem(
+                self.base.fd,
+                &mut idx as *mut _ as *mut _,
+                &mut buf as *mut _ as *mut _,
+            );
+            if ret < 0 {
+                return Err(Error::BPF)
+            }
+        }
+
+        Ok(unsafe {buf.assume_init()})
+    }
+
+    /// Write a value to the array at the given index.
+    ///
+    /// Write a value to the array at the given index, the size of the slice given must match
+    /// the expected size of the value based on the configuration of the map.
+    ///
+    /// # Example
+    /// ```no_run
+    /// use redbpf::ArrayMap;
+    /// let ar_map = ArrayMap::<u32>::new(map).unwrap();
+    /// match ar_map.write(10, 0xDEADBEEF) {
+    ///     Ok(()) => println!("Wrote 0xDEADBEEF to array."),
+    ///     Err(e) => println!("Couldn't write value: {:?}", e)
+    /// };
+    /// ```
+    pub fn write(&self, mut idx: u32, mut val: T) -> Result<()> {
+        unsafe {
+            let ret = bpf_sys::bpf_update_elem(
+                self.base.fd,
+                &mut idx as *mut _ as *mut _,
+                &mut val as *mut _ as *mut _,
+                0,
+            );
+            if ret < 0 {
+                return Err(Error::BPF);
+            }
+        }
         Ok(())
     }
 }
